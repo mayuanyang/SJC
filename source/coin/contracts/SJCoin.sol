@@ -159,8 +159,8 @@ contract SJCoin {
         return true;
     }
 
-    function payForOrder(address _to, uint256 _value, string orderId) public returns (bool success) {
-        _transfer(msg.sender, _to, _value);
+    function payForOrder(address _from, address _to, uint256 _value, string orderId) public returns (bool success) {
+        transferFrom(_from, _to, _value);
         orderStatus[orderId] = "PAID";
         return true;
     }
