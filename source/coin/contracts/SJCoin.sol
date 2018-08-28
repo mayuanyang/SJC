@@ -9,11 +9,12 @@ contract SJCoin {
     uint8 public decimals;
     // 18 decimals is the strongly suggested default, avoid changing it
     uint256 public totalSupply;
+    address owner;
 
     // This creates an array with all balances
     mapping (address => uint256) public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
-    mapping (string => string) public orderStatus;
+    mapping (string => mapping (address => uint256)) public orderTransactions;
 
     // This generates a public event on the blockchain that will notify clients
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -35,6 +36,7 @@ contract SJCoin {
         decimals = 18;
         totalSupply = 20000000 * 10 ** uint256(decimals);  // Update total supply with the decimal amount
         balanceOf[msg.sender] = totalSupply;                // Give the creator all initial tokens
+        owner = msg.sender;
     }
 
     /**
@@ -154,14 +156,12 @@ contract SJCoin {
         return true;
     }
 
-    function initOrder(string orderId) public returns (bool success) {
-        orderStatus[orderId] = "RECEIVED";
-        return true;
-    }
-
     function payForOrder(address _from, address _to, uint256 _value, string orderId) public returns (bool success) {
-        transferFrom(_from, _to, _value);
-        orderStatus[orderId] = "PAID";
-        return true;
+        if (msg.sender == owner) {
+            transferFrom(_from, _to, _value);
+            orderTransactions[orderId][msg.sender] += _value;
+            return true;
+        }
+        return false;
     }
 }
