@@ -14,7 +14,10 @@ contract SJCoin {
     // This creates an array with all balances
     mapping (address => uint256) public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
-    mapping (string => mapping (address => uint256)) public orderTransactions;
+
+    // For shopping cart, an order can be paid by different accounts, string represent the OrderId and the mapping represent each indivisual transaction
+    mapping (bytes32 => mapping (address => uint256)) public orderTransactions;
+    mapping (bytes32 => uint256) public orderPaidAmount;
 
     // This generates a public event on the blockchain that will notify clients
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -30,7 +33,7 @@ contract SJCoin {
      *
      * Initializes contract with initial supply tokens to the creator of the contract
      */
-    function SJCoin() public {
+    constructor() public {
         name = "SJ Token";                                   // Set the name for display purposes
         symbol = "SJC";                               // Set the symbol for display purposes
         decimals = 18;
@@ -156,12 +159,28 @@ contract SJCoin {
         return true;
     }
 
-    function payForOrder(address _from, address _to, uint256 _value, string orderId) public returns (bool success) {
+    function withdraw(address _from, uint256 _value, string correlationId) public returns (bool success) {
+        // Unlike transferFrom which require allowance, this method withdraw money from _from to the owner account
         if (msg.sender == owner) {
-            transferFrom(_from, _to, _value);
-            orderTransactions[orderId][msg.sender] += _value;
+            _transfer(_from, msg.sender, _value);
+            orderTransactions[convert(correlationId)][_from] += _value;
+            orderPaidAmount[convert(correlationId)] += _value;
             return true;
         }
         return false;
+    }
+
+    function getPaidAmount(string correlationId) public returns (uint256 paidAmount) {
+        return orderPaidAmount[convert(correlationId)];
+    }
+
+    function convert(string key) returns (bytes32 ret) {
+        if (bytes(key).length > 32) {
+            throw;
+        }
+
+        assembly {
+            ret := mload(add(key, 32))
+        }
     }
 }
