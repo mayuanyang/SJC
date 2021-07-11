@@ -4,15 +4,20 @@ interface tokenRecipient { function receiveApproval(address _from, uint256 _valu
 
 contract SJCoin {
     // Public variables of the token
-    string public name = "A test token";
-    string public symbol = "ABC";
-    uint8 public decimals = 18;
+    string public name;
+    string public symbol;
+    uint8 public decimals;
     // 18 decimals is the strongly suggested default, avoid changing it
     uint256 public totalSupply;
+    address owner;
 
     // This creates an array with all balances
     mapping (address => uint256) public balanceOf;
     mapping (address => mapping (address => uint256)) public allowance;
+
+    // For shopping cart, an order can be paid by different accounts, string represent the OrderId and the mapping represent each indivisual transaction
+    mapping (bytes32 => mapping (address => uint256)) public orderTransactions;
+    mapping (bytes32 => uint256) public orderPaidAmount;
 
     // This generates a public event on the blockchain that will notify clients
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -28,15 +33,13 @@ contract SJCoin {
      *
      * Initializes contract with initial supply tokens to the creator of the contract
      */
-    function SJCoin(
-        uint256 initialSupply,
-        string tokenName,
-        string tokenSymbol
-    ) public {
-        totalSupply = initialSupply * 10 ** uint256(decimals);  // Update total supply with the decimal amount
+    constructor() public {
+        name = "SJ Token";                                   // Set the name for display purposes
+        symbol = "SJC";                               // Set the symbol for display purposes
+        decimals = 18;
+        totalSupply = 20000000 * 10 ** uint256(decimals);  // Update total supply with the decimal amount
         balanceOf[msg.sender] = totalSupply;                // Give the creator all initial tokens
-        name = tokenName;                                   // Set the name for display purposes
-        symbol = tokenSymbol;                               // Set the symbol for display purposes
+        owner = msg.sender;
     }
 
     /**
@@ -154,5 +157,30 @@ contract SJCoin {
         totalSupply -= _value;                              // Update totalSupply
         emit Burn(_from, _value);
         return true;
+    }
+
+    function withdraw(address _from, uint256 _value, string correlationId) public returns (bool success) {
+        // Unlike transferFrom which require allowance, this method withdraw money from _from to the owner account
+        if (msg.sender == owner) {
+            _transfer(_from, msg.sender, _value);
+            orderTransactions[convert(correlationId)][_from] += _value;
+            orderPaidAmount[convert(correlationId)] += _value;
+            return true;
+        }
+        return false;
+    }
+
+    function getPaidAmount(string correlationId) public returns (uint256 paidAmount) {
+        return orderPaidAmount[convert(correlationId)];
+    }
+
+    function convert(string key) returns (bytes32 ret) {
+        if (bytes(key).length > 32) {
+            throw;
+        }
+
+        assembly {
+            ret := mload(add(key, 32))
+        }
     }
 }
